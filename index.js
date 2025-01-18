@@ -3,27 +3,44 @@ const SMTPServer = require("smtp-server").SMTPServer;
 const server = new SMTPServer({
     allowInsecureAuth: true,
     authOptional: true,
-    
-    onConnect(session, cb){
-        console.log("OnConnect", session.id)
-        cb();
+
+    onConnect(session, cb) {
+        console.log("OnConnect", session.id);
+        cb(); // Proceed to next step
     },
 
-    onMailFrom(addpress, session, cb) {
-        console.log("OnMailFrom", addpress.address, session.id)
-        cb();
+    onMailFrom(address, session, cb) {
+        console.log("OnMailFrom", address.address, session.id);
+        cb(); // Proceed to next step
     },
 
-    onRcptTo(addpress, session, cb) {
-        console.log("OnRcptTo", addpress.address, session.id);
+    onRcptTo(address, session, cb) {
+        console.log("OnRcptTo", address.address, session.id);
+        cb(); // Proceed to next step
     },
 
-    onData(stream, session, cb){
-        stream.on('data', (data) => {
-            console.log('OnData', data.toString())
-            stream.on('end', cb)
+    onData(stream, session, cb) {
+        let emailData = ""; // Store the data chunks
+
+        // Listen for 'data' event to collect the email content
+        stream.on('data', (chunk) => {
+            emailData += chunk.toString();
+        });
+
+        // Listen for 'end' event to complete the data processing
+        stream.on('end', () => {
+            console.log("OnData Complete:");
+            console.log(emailData); // Log the entire email content
+            cb(); // Signal that the email has been processed
+        });
+
+        // Handle stream errors
+        stream.on('error', (err) => {
+            console.error("Stream Error:", err);
+            cb(err); // Return the error to the client
         });
     }
-})
+});
 
-server.listen(25, () => console.log("server is listening on : 25"))
+// Start the server on port 25
+server.listen(25, () => console.log("SMTP server is listening on port 25"));
