@@ -1,4 +1,5 @@
 const SMTPServer = require("smtp-server").SMTPServer;
+const { simpleParser } = require("mailparser");
 
 const server = new SMTPServer({
     allowInsecureAuth: true,
@@ -6,39 +7,35 @@ const server = new SMTPServer({
 
     onConnect(session, cb) {
         console.log("OnConnect", session.id);
-        cb(); // Proceed to next step
+        cb(); // Allow connection
     },
 
     onMailFrom(address, session, cb) {
         console.log("OnMailFrom", address.address, session.id);
-        cb(); // Proceed to next step
+        cb(); // Allow sender
     },
 
     onRcptTo(address, session, cb) {
         console.log("OnRcptTo", address.address, session.id);
-        cb(); // Proceed to next step
+        cb(); // Allow recipient
     },
 
     onData(stream, session, cb) {
-        let emailData = ""; // Store the data chunks
-
-        // Listen for 'data' event to collect the email content
-        stream.on('data', (chunk) => {
-            emailData += chunk.toString();
-        });
-
-        // Listen for 'end' event to complete the data processing
-        stream.on('end', () => {
-            console.log("OnData Complete:");
-            console.log(emailData); // Log the entire email content
-            cb(); // Signal that the email has been processed
-        });
-
-        // Handle stream errors
-        stream.on('error', (err) => {
-            console.error("Stream Error:", err);
-            cb(err); // Return the error to the client
-        });
+        simpleParser(stream)
+            .then(parsed => {
+                console.log("Parsed Email:");
+                console.log("From:", parsed.from.text); // Sender
+                console.log("To:", parsed.to.text);     // Recipients
+                console.log("Subject:", parsed.subject); // Subject
+                console.log("Text Body:", parsed.text); // Plain text body
+                console.log("HTML Body:", parsed.html); // HTML body, if any
+            })
+            .catch(err => {
+                console.error("Error parsing email:", err);
+            })
+            .finally(() => {
+                cb(); // Signal that processing is complete
+            });
     }
 });
 
